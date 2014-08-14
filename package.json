@@ -1,0 +1,15 @@
+{
+  "name": "group-draw-game-backend",
+  "version": "0.0.0",
+  "description": "The backend for Group Draw Game app",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nicholas Dujay",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.8.3",
+    "socket.io": "^1.0.6"
+  }
+}

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Test</title>
+
+    <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css">
+    <style>
+        .messages-panel {
+            margin-top: 20px;   
+        }
+        .page-content {
+            margin-top: 20px;
+        }
+        canvas {
+            border-radius: 15px;
+            border: 2px solid black;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row page-content">
+            <div class="col-md-3">
+                <div class="panel panel-default">
+                    <header class="panel-heading">crapchat</header>
+                    <div class="panel-body">
+                        <form id="input-form" role="form" class="form-inline">
+                            <input type="text" name="message" id="input-message" class="form-control">
+                            <input type="submit" value="Submit" class="btn btn-default">
+                        </form>
+
+                        <div class="panel panel-default messages-panel">
+                            <header class="panel-heading">Messages</header>
+                            <div class="panel-body">
+                                <ul id="messages" class="list-group"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-9">
+                <div class="panel panel-default">
+                    <header class="panel-heading">Draw here!</header>
+                    <div class="panel-body">
+                        <canvas id="canvas" width="320px" height="480px" class="center-block"></canvas>
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- vendor scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="bower_components/jquery/dist/jquery.js"></script>
+    <script src="bower_components/bootstrap/dist/js/bootstrap.js"></script>
+    <!-- my scripts -->
+
+    <script>
+        $(function() {
+            var socket = io();
+
+            $('#input-form').on('submit',function() {
+                socket.emit('chat.message', $('#input-message').val());
+                $('#input-message').val('');
+
+                // prevent it from trying to actually submit
+                return false;
+            });
+
+            socket.on('chat.message.broadcast', function(msg) {
+                $('#messages').append($('<li/>', { 'class': 'list-group-item' }).text(msg));
+            });
+
+            var canvas = $('#canvas');
+            var d_canvas = canvas[0];
+            var context = d_canvas.getContext('2d');
+            var drawing = false;
+            var lastX, lastY;
+            
+            function getMouseX(evt){
+                return evt.clientX - d_canvas.getBoundingClientRect().left;
+            }
+            function getMouseY(evt){
+                return evt.clientY - d_canvas.getBoundingClientRect().top;
+            }
+            
+            canvas.mousedown(function(evt) {
+                lastX = getMouseX(evt);
+                lastY = getMouseY(evt);
+                if(!drawing) {
+                    socket.emit('draw.up', JSON.stringify({ x: lastX, y: lastY }));
+                }
+                drawing = true;
+            });
+
+            canvas.mousemove(function(evt) {
+                if(drawing){
+                    context.beginPath();
+                    context.moveTo(lastX, lastY);
+                    context.lineTo(getMouseX(evt), getMouseY(evt));
+                    context.stroke();
+                    
+                    lastX = getMouseX(evt);
+                    lastY = getMouseY(evt);
+
+                    socket.emit('draw.up', JSON.stringify({ x: lastX, y: lastY }));
+                }
+            });
+
+            //when the thing sends back to us
+            var lastDownloaded = undefined;
+            var nextDownloaded = undefined;
+            socket.on('draw.down', function(point) {
+                nextDownloaded = JSON.parse(point);
+
+                if(!lastDownloaded) {
+                    lastDownloaded = nextDownloaded;
+                }
+
+                context.beginPath();
+                context.moveTo(lastDownloaded.x, lastDownloaded.y);
+                context.lineTo(nextDownloaded.x, nextDownloaded.y);
+                context.stroke();
+
+                lastDownloaded = nextDownloaded;
+            });
+
+            $(document).mouseup(function() {
+               drawing = false; 
+            });
+        });
+    </script>
+</body>
+</html>
